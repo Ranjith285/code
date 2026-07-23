@@ -5961,7 +5961,16 @@
     "lmarenaWebCookieHint": "Buka arena.ai, masuk, lalu salin header Cookie lengkap dari permintaan Jaringan. Sertakan arena-auth-prod-v1.0 and arena-auth-prod-v1.1 (dan bagian selanjutnya jika ada), sebaiknya dengan cf_clearance. Jangan tempel hanya cookie arena-auth-prod-v1 yang kosong. Opsional: providerSpecificData.recaptchaV3Token jika create-evaluation masih mengembalikan 403.",
     "kimiOfficialSupporterBadge": "Sahabat Pendiri",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) adalah sahabat open source pendiri OmniRoute",
-    "kimiPartnerLinkNote": "Tautan mitra — mendukung OmniRoute tanpa biaya tambahan bagi Anda"
+    "kimiPartnerLinkNote": "Tautan mitra — mendukung OmniRoute tanpa biaya tambahan bagi Anda",
+    "codexQuotaPools": "Kumpulan kuota Codex",
+    "codexPoolAvailable": "Tersedia",
+    "codexPoolPartiallyLimited": "Dibatasi sebagian",
+    "codexPoolFullyLimited": "Dibatasi sepenuhnya",
+    "codexPoolLimited": "{count} dibatasi",
+    "codexPoolQuotaExhausted": "Kuota habis",
+    "codexPoolCoolingDown": "Dalam masa tunggu",
+    "codexPoolUsed": "terpakai",
+    "codexPoolUntil": "Hingga {value}"
   },
   "settings": {
     "title": "Settings",

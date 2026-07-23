@@ -5961,7 +5961,16 @@
     "lmarenaWebCookieHint": "Откройте arena.ai, войдите в систему, затем скопируйте весь заголовок Cookie из сетевого запроса (Network). Включите arena-auth-prod-v1.0 и arena-auth-prod-v1.1 (и последующие части, если они есть), желательно с cf_clearance. Не вставляйте только пустой cookie arena-auth-prod-v1. Необязательно: providerSpecificData.recaptchaV3Token, если create-evaluation по-прежнему возвращает 403.",
     "kimiOfficialSupporterBadge": "Друг-основатель",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) — друг-основатель открытого кода OmniRoute",
-    "kimiPartnerLinkNote": "Партнерская ссылка — поддерживает OmniRoute без дополнительных затрат с вашей стороны"
+    "kimiPartnerLinkNote": "Партнерская ссылка — поддерживает OmniRoute без дополнительных затрат с вашей стороны",
+    "codexQuotaPools": "Пулы квот Codex",
+    "codexPoolAvailable": "Доступен",
+    "codexPoolPartiallyLimited": "Частично ограничен",
+    "codexPoolFullyLimited": "Полностью ограничен",
+    "codexPoolLimited": "Ограничено: {count}",
+    "codexPoolQuotaExhausted": "Квота исчерпана",
+    "codexPoolCoolingDown": "В периоде ожидания",
+    "codexPoolUsed": "использовано",
+    "codexPoolUntil": "До {value}"
   },
   "settings": {
     "title": "Настройки",

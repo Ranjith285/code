@@ -5961,7 +5961,16 @@
     "lmarenaWebCookieHint": "Fungua arena.ai, ingia, kisha nakili kichwa kizima cha Cookie kutoka kwa ombi la Network. Jumuisha arena-auth-prod-v1.0 na arena-auth-prod-v1.1 (na vipande zaidi vikiwepo), ikiwezekana pamoja na cf_clearance. Usibandike tu kuki tupu ya arena-auth-prod-v1. Ya hiari: providerSpecificData.recaptchaV3Token ikiwa create-evaluation bado inarudisha 403.",
     "kimiOfficialSupporterBadge": "Rafiki Mwanzilishi",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) ni rafiki mwanzilishi wa chanzo huria wa OmniRoute",
-    "kimiPartnerLinkNote": "Kiungo cha mshirika — kinaunga mkono OmniRoute bila gharama ya ziada kwako"
+    "kimiPartnerLinkNote": "Kiungo cha mshirika — kinaunga mkono OmniRoute bila gharama ya ziada kwako",
+    "codexQuotaPools": "Makundi ya mgao wa Codex",
+    "codexPoolAvailable": "Inapatikana",
+    "codexPoolPartiallyLimited": "Imewekewa kikomo kwa sehemu",
+    "codexPoolFullyLimited": "Imewekewa kikomo kikamilifu",
+    "codexPoolLimited": "{count} zimewekewa kikomo",
+    "codexPoolQuotaExhausted": "Mgao umeisha",
+    "codexPoolCoolingDown": "Katika kipindi cha kusubiri",
+    "codexPoolUsed": "imetumika",
+    "codexPoolUntil": "Hadi {value}"
   },
   "settings": {
     "title": "Settings",
