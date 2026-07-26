@@ -5985,7 +5985,16 @@
     "lmarenaWebCookieHint": "Mở arena.ai, đăng nhập, sau đó sao chép toàn bộ header Cookie từ một yêu cầu mạng. Bao gồm arena-auth-prod-v1.0 và arena-auth-prod-v1.1 (và các phần tiếp theo nếu có), ưu tiên kèm theo cf_clearance. Không chỉ dán cookie arena-auth-prod-v1 trống. Tùy chọn: providerSpecificData.recaptchaV3Token nếu create-evaluation vẫn trả về 403.",
     "kimiOfficialSupporterBadge": "Người Bạn Sáng Lập",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) là người bạn mã nguồn mở sáng lập của OmniRoute",
-    "kimiPartnerLinkNote": "Partner link — supports OmniRoute at no extra cost to you"
+    "kimiPartnerLinkNote": "Partner link — supports OmniRoute at no extra cost to you",
+    "codexQuotaPools": "Nhóm hạn mức Codex",
+    "codexPoolAvailable": "Khả dụng",
+    "codexPoolPartiallyLimited": "Bị giới hạn một phần",
+    "codexPoolFullyLimited": "Bị giới hạn hoàn toàn",
+    "codexPoolLimited": "{count} mục bị giới hạn",
+    "codexPoolQuotaExhausted": "Đã hết hạn mức",
+    "codexPoolCoolingDown": "Đang trong thời gian chờ",
+    "codexPoolUsed": "đã dùng",
+    "codexPoolUntil": "Đến {value}"
   },
   "settings": {
     "title": "Cài đặt",

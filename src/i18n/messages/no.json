@@ -5963,7 +5963,16 @@
     "lmarenaWebCookieHint": "Åpne arena.ai, logg inn, og kopier deretter hele Cookie-headeren fra en nettverksforespørsel. Inkluder arena-auth-prod-v1.0 og arena-auth-prod-v1.1 (og ytterligere deler hvis tilgjengelig), helst med cf_clearance. Ikke lim inn bare den tomme arena-auth-prod-v1-cookien. Valgfritt: providerSpecificData.recaptchaV3Token hvis create-evaluation fortsatt returnerer 403.",
     "kimiOfficialSupporterBadge": "Grunnleggende venn",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) er OmniRoutes grunnleggende åpen kildekode-venn",
-    "kimiPartnerLinkNote": "Partnerlenke — støtter OmniRoute uten ekstra kostnad for deg"
+    "kimiPartnerLinkNote": "Partnerlenke — støtter OmniRoute uten ekstra kostnad for deg",
+    "codexQuotaPools": "Codex-kvotepuljer",
+    "codexPoolAvailable": "Tilgjengelig",
+    "codexPoolPartiallyLimited": "Delvis begrenset",
+    "codexPoolFullyLimited": "Fullstendig begrenset",
+    "codexPoolLimited": "{count} begrenset",
+    "codexPoolQuotaExhausted": "Kvoten er oppbrukt",
+    "codexPoolCoolingDown": "I nedkjølingsperiode",
+    "codexPoolUsed": "brukt",
+    "codexPoolUntil": "Til {value}"
   },
   "settings": {
     "title": "Innstillinger",

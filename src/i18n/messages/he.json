@@ -5963,7 +5963,16 @@
     "lmarenaWebCookieHint": "פתח את arena.ai, התחבר, ולאחר מכן העתק את כותרת ה-Cookie המלאה מבקשת Network. כלול את arena-auth-prod-v1.0 ואת arena-auth-prod-v1.1 (וחלקים נוספים אם קיימים), רצוי עם cf_clearance. אל תדביק רק את עוגיית arena-auth-prod-v1 הריקה. אופציונלי: providerSpecificData.recaptchaV3Token אם create-evaluation עדיין מחזיר 403.",
     "kimiOfficialSupporterBadge": "חבר מייסד",
     "kimiOfficialSupporterTooltip": "Kimi (Moonshot AI) הוא חבר הקוד הפתוח המייסד של OmniRoute",
-    "kimiPartnerLinkNote": "קישור שותף — תומך ב-OmniRoute ללא עלות נוספת עבורך"
+    "kimiPartnerLinkNote": "קישור שותף — תומך ב-OmniRoute ללא עלות נוספת עבורך",
+    "codexQuotaPools": "מאגרי מכסות Codex",
+    "codexPoolAvailable": "זמין",
+    "codexPoolPartiallyLimited": "מוגבל חלקית",
+    "codexPoolFullyLimited": "מוגבל לחלוטין",
+    "codexPoolLimited": "{count} מוגבלים",
+    "codexPoolQuotaExhausted": "המכסה נוצלה",
+    "codexPoolCoolingDown": "בתקופת המתנה",
+    "codexPoolUsed": "בשימוש",
+    "codexPoolUntil": "עד {value}"
   },
   "settings": {
     "title": "הגדרות",
