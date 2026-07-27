@@ -1704,10 +1704,15 @@ export async function handleChatCore({
             comboConfig as unknown as { name: string; models: unknown[] },
             allCombosData as unknown as { name: string; models: unknown[] }[]
           );
-          comboTargetLimits = targets.map((t: { modelStr?: string }) => {
-            const parsed = parseModel(t.modelStr);
-            return getTokenLimit(parsed.provider, parsed.model);
-          });
+          comboTargetLimits = targets
+            .map((t: { modelStr?: string }) => {
+              const parsed = parseModel(t.modelStr);
+              return getTokenLimit(parsed.provider, parsed.model);
+            })
+            .filter(
+              (limit): limit is number =>
+                typeof limit === "number" && Number.isFinite(limit) && limit > 0
+            );
         }
         // chatCore executes per concrete target (handleSingleModel resolves
         // provider/effectiveModel before delegating). Compress against THIS
