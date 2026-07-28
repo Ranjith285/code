@@ -32,14 +32,17 @@
  * yields no text short-circuits with a sanitized error response.
  */
 import { errorResponse } from "../utils/error.ts";
-import type { ComboLogger, HandleSingleModel } from "./combo/types.ts";
+import type { ComboLogger, HandleSingleModel, ResolvedComboTarget } from "./combo/types.ts";
 // extractPanelText is a generic assistant-text extractor (OpenAI chat / Claude /
 // Gemini / Responses) — reused here to read each step's output, not fusion-specific.
 import { extractPanelText } from "./fusion.ts";
 
 type Body = Record<string, unknown>;
 
-export type PipelineStep = { model: string; prompt?: string | null };
+export type PipelineStep = {
+  target: ResolvedComboTarget;
+  prompt?: string | null;
+};
 
 /**
  * Prepend a system instruction to the client's original conversation (format-aware),
@@ -125,18 +128,22 @@ export async function handlePipelineChat({
   log,
   comboName,
 }: HandlePipelineChatOptions): Promise<Response> {
-  const chain = (Array.isArray(steps) ? steps : []).filter((s) => s && s.model);
+  const chain = (Array.isArray(steps) ? steps : []).filter((step) => step?.target);
   if (chain.length === 0) {
     return errorResponse(400, "Pipeline combo has no models");
   }
   log.info(
     "PIPELINE",
-    `Combo "${comboName ?? ""}" | steps=${chain.length} [${chain.map((s) => s.model).join(" -> ")}]`
+    `Combo "${comboName ?? ""}" | steps=${chain.length} [${chain.map((step) => step.target.modelStr).join(" -> ")}]`
   );
 
   // Single-step pipeline: nothing to chain — run it directly (streams to client).
   if (chain.length === 1) {
-    return handleSingleModel(prependSystemInstruction(body, chain[0].prompt), chain[0].model);
+    return handleSingleModel(
+      prependSystemInstruction(body, chain[0].prompt),
+      chain[0].target.modelStr,
+      chain[0].target
+    );
   }
 
   let prevOutput = "";
@@ -153,34 +160,42 @@ export async function handlePipelineChat({
     if (!isFinal) stepBody = stripStreaming(stepBody);
 
     const t0 = Date.now();
-    const res = await handleSingleModel(stepBody, step.model);
+    const res = await handleSingleModel(stepBody, step.target.modelStr, step.target);
 
     if (isFinal) {
-      log.info("PIPELINE", `Final step ${step.model} responded (${Date.now() - t0}ms)`);
+      log.info("PIPELINE", `Final step ${step.target.modelStr} responded (${Date.now() - t0}ms)`);
       return res;
     }
 
     // An intermediate step must succeed with usable text — otherwise fail the whole
     // pipeline (never silently swallow; the client gets a clear, sanitized error).
     if (!res.ok) {
-      log.warn("PIPELINE", `Step ${i + 1} (${step.model}) failed`, { status: res.status });
+      log.warn("PIPELINE", `Step ${i + 1} (${step.target.modelStr}) failed`, {
+        status: res.status,
+      });
       const status = res.status >= 400 && res.status <= 599 ? res.status : 502;
-      return errorResponse(status, `Pipeline step ${i + 1} (${step.model}) failed`);
+      return errorResponse(status, `Pipeline step ${i + 1} (${step.target.modelStr}) failed`);
     }
     try {
       const json = await res.clone().json();
       prevOutput = extractPanelText(json);
     } catch {
-      log.warn("PIPELINE", `Step ${i + 1} (${step.model}) returned an unparseable body`);
-      return errorResponse(502, `Pipeline step ${i + 1} (${step.model}) returned an unparseable body`);
+      log.warn("PIPELINE", `Step ${i + 1} (${step.target.modelStr}) returned an unparseable body`);
+      return errorResponse(
+        502,
+        `Pipeline step ${i + 1} (${step.target.modelStr}) returned an unparseable body`
+      );
     }
     if (!prevOutput.trim()) {
-      log.warn("PIPELINE", `Step ${i + 1} (${step.model}) returned empty output`);
-      return errorResponse(502, `Pipeline step ${i + 1} (${step.model}) returned empty output`);
+      log.warn("PIPELINE", `Step ${i + 1} (${step.target.modelStr}) returned empty output`);
+      return errorResponse(
+        502,
+        `Pipeline step ${i + 1} (${step.target.modelStr}) returned empty output`
+      );
     }
     log.info(
       "PIPELINE",
-      `Step ${i + 1} ${step.model} ok (${prevOutput.length} chars, ${Date.now() - t0}ms)`
+      `Step ${i + 1} ${step.target.modelStr} ok (${prevOutput.length} chars, ${Date.now() - t0}ms)`
     );
   }
 

@@ -56,7 +56,7 @@ import {
   isNoAuthRawProviderPrefix,
   normalizeBlockedProviderSet,
 } from "@/shared/utils/noAuthProviders";
-import { parseModel } from "@omniroute/open-sse/services/model";
+import { parseModel, resolveCanonicalProviderModel } from "@omniroute/open-sse/services/model";
 import { getTokenLimit } from "@omniroute/open-sse/services/contextManager";
 import { extractApiKey } from "@/sse/services/auth";
 import type { ComboModelStep } from "@/lib/combos/steps";
@@ -431,22 +431,32 @@ async function buildUnifiedModelsResponseCore(
     };
 
     const getComboTargetModelId = (target: ComboCatalogTarget) => {
-      const rawProvider = typeof target.provider === "string" ? target.provider.trim() : "";
+      const rawProvider =
+        typeof target.providerId === "string"
+          ? target.providerId.trim()
+          : typeof target.provider === "string"
+            ? target.provider.trim()
+            : "";
       const modelStr = typeof target.modelStr === "string" ? target.modelStr.trim() : "";
       if (!rawProvider || rawProvider === "unknown" || !modelStr) return null;
 
       const providerId = resolveCanonicalProviderId(rawProvider);
       if (!providerId || providerId === "unknown") return null;
 
+      let modelId = modelStr;
       for (const prefix of getProviderPrefixes(providerId, rawProvider)) {
         const prefixWithSlash = `${prefix}/`;
         if (modelStr.startsWith(prefixWithSlash)) {
-          const modelId = modelStr.slice(prefixWithSlash.length).trim();
-          return modelId ? { providerId, modelId } : null;
+          modelId = modelStr.slice(prefixWithSlash.length).trim();
+          break;
         }
       }
 
-      return { providerId, modelId: modelStr };
+      if (!modelId) return null;
+      const canonical = resolveCanonicalProviderModel(providerId, modelId);
+      return canonical.provider && canonical.model
+        ? { providerId: canonical.provider, modelId: canonical.model }
+        : null;
     };
 
     const getComboTargetCatalogMetadata = (
@@ -568,14 +578,13 @@ async function buildUnifiedModelsResponseCore(
 
     const buildComboCatalogMetadata = (
       combo: Parameters<typeof resolveNestedComboTargets>[0],
-      allCombos: Parameters<typeof resolveNestedComboTargets>[1]
+      targets: ComboCatalogTarget[]
     ) => {
       const explicitContextLength = isPositiveFiniteNumber(combo.context_length)
         ? combo.context_length
         : undefined;
 
       const baseMetadata = explicitContextLength ? { context_length: explicitContextLength } : {};
-      const targets = resolveNestedComboTargets(combo, allCombos) as ComboCatalogTarget[];
       if (targets.length === 0) return baseMetadata;
 
       const targetMetadata = targets.map((target) => getComboTargetCatalogMetadata(target));
@@ -703,16 +712,13 @@ async function buildUnifiedModelsResponseCore(
         combo as Parameters<typeof resolveNestedComboTargets>[0],
         combos as Parameters<typeof resolveNestedComboTargets>[1]
       ) as ComboCatalogTarget[];
-      if (
-        comboTargets.some((target) => {
-          const resolved = getComboTargetModelId(target);
-          return resolved ? getModelIsHidden(resolved.providerId, resolved.modelId) : false;
-        })
-      ) {
-        continue;
-      }
+      const visibleTargets = comboTargets.filter((target) => {
+        const resolved = getComboTargetModelId(target);
+        return resolved ? !getModelIsHidden(resolved.providerId, resolved.modelId) : true;
+      });
+      if (visibleTargets.length === 0) continue;
 
-      const comboMetadata = buildComboCatalogMetadata(combo, combos);
+      const comboMetadata = buildComboCatalogMetadata(combo, visibleTargets);
 
       listedIds.add(combo.name);
       models.push({

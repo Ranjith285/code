@@ -161,6 +161,7 @@ import {
   resolveWeightedTargets,
   resolveWeightedStepGroups,
 } from "./combo/comboStructure.ts";
+import { isComboModelVisible } from "./combo/comboVisibility.ts";
 import {
   QUOTA_SOFT_DEPRIORITIZE_FACTOR,
   setCandidateQuotaSoftPenalty,
@@ -695,6 +696,7 @@ export async function handleComboChat({
   signal,
   apiKeyAllowedConnections = null,
   nesting = null,
+  hiddenModelsByProvider = getHiddenModelsByProvider(),
 }: HandleComboChatOptions): Promise<Response> {
   const comboCtx = createComboContext({ body, combo, settings, relayOptions, log });
   const {
@@ -731,10 +733,14 @@ export async function handleComboChat({
     // the auto-combo redirect path passes an empty list and keeps prior behavior.
     const haveFullCombos = Array.isArray(allCombos) ? allCombos.length > 0 : !!allCombos;
     const pinInCombo =
-      !haveFullCombos ||
-      resolveComboTargets(combo, allCombos, clampComboDepth(config.maxComboDepth)).some(
-        (t) => t.modelStr === pinnedModel
-      );
+      isComboModelVisible(pinnedModel, null, hiddenModelsByProvider) &&
+      (!haveFullCombos ||
+        resolveComboTargets(
+          combo,
+          allCombos,
+          clampComboDepth(config.maxComboDepth),
+          hiddenModelsByProvider
+        ).some((t) => t.modelStr === pinnedModel));
     // Honor the pin only if it is still a combo target AND its provider is not
     // DURABLY down. Without the health gate a pin keeps routing a session to a
     // dead/credits-exhausted/throttled account forever (strategy bypassed, no
@@ -818,23 +824,28 @@ export async function handleComboChat({
     );
   }
   if (strategy === "fusion") {
-    const fusionModels = (combo.models || [])
-      .map((m) => {
-        if (typeof m === "string") return m;
-        if (m && typeof m === "object") {
-          const obj = m as Record<string, unknown>;
-          if (typeof obj.model === "string") return obj.model;
-        }
-        return null;
-      })
-      .filter((m): m is string => Boolean(m));
+    const fusionModels = resolveComboTargets(
+      combo,
+      allCombos,
+      clampComboDepth(config.maxComboDepth),
+      hiddenModelsByProvider
+    );
+    const judgeTarget = judgeModel
+      ? resolveComboTargets(
+          { name: `${combo.name}:judge`, models: [judgeModel] },
+          null,
+          clampComboDepth(config.maxComboDepth),
+          hiddenModelsByProvider
+        )[0]
+      : null;
     return handleFusionChat({
       body,
       models: fusionModels,
       handleSingleModel: handleSingleModelWithTimeout,
       log,
       comboName: combo.name,
-      judgeModel,
+      judgeModel: judgeTarget ? judgeModel : undefined,
+      judgeTarget,
       tuning: fusionTuning,
     });
   }
@@ -846,21 +857,12 @@ export async function handleComboChat({
   // list is `combo.models` (in order); an optional per-step `prompt` is read off the
   // target object (comboModelStepInputSchema.prompt).
   if (strategy === "pipeline") {
-    const pipelineSteps = (combo.models || [])
-      .map((m): PipelineStep | null => {
-        if (typeof m === "string") return { model: m };
-        if (m && typeof m === "object") {
-          const obj = m as Record<string, unknown>;
-          if (typeof obj.model === "string") {
-            return {
-              model: obj.model,
-              prompt: typeof obj.prompt === "string" ? obj.prompt : undefined,
-            };
-          }
-        }
-        return null;
-      })
-      .filter((s): s is PipelineStep => Boolean(s));
+    const pipelineSteps: PipelineStep[] = resolveComboTargets(
+      combo,
+      allCombos,
+      clampComboDepth(config.maxComboDepth),
+      hiddenModelsByProvider
+    ).map((target) => ({ target, prompt: target.prompt }));
     return handlePipelineChat({
       body,
       steps: pipelineSteps,
@@ -881,7 +883,13 @@ export async function handleComboChat({
 
   const executeModeUnits =
     nestedComboMode === "execute" && allCombos
-      ? resolveComboRuntimeUnits(combo, allCombos, "execute", nestingContext.maxDepth)
+      ? resolveComboRuntimeUnits(
+          combo,
+          allCombos,
+          "execute",
+          nestingContext.maxDepth,
+          hiddenModelsByProvider
+        )
       : [];
   const hasExecutableComboRef = executeModeUnits.some((unit) => unit.kind === "combo-ref");
   const simpleExecuteStrategies = new Set([
@@ -968,6 +976,7 @@ export async function handleComboChat({
         relayOptions,
         signal,
         apiKeyAllowedConnections,
+        hiddenModelsByProvider,
       },
       runCombo: handleComboChat,
     });
@@ -1006,6 +1015,7 @@ export async function handleComboChat({
       settings,
       allCombos,
       signal,
+      hiddenModelsByProvider,
     });
   }
 
@@ -1067,7 +1077,11 @@ export async function handleComboChat({
   let stepGroups: Array<{ step: ComboRuntimeStep; targets: ResolvedComboTarget[] }> | undefined;
   const weightedEligibleKeys = new Set<string>();
   if (strategy === "weighted") {
-    stepGroups = resolveWeightedStepGroups(expandedCombo, expandedAllCombos);
+    stepGroups = resolveWeightedStepGroups(
+      expandedCombo,
+      expandedAllCombos,
+      hiddenModelsByProvider
+    );
     for (const group of stepGroups) {
       const availability = await Promise.all(group.targets.map(isTargetSelectableForWeighted));
       if (availability.some(Boolean)) weightedEligibleKeys.add(group.step.executionKey);
@@ -1109,7 +1123,8 @@ export async function handleComboChat({
       : resolveComboTargets(
           expandedCombo,
           expandedAllCombos,
-          clampComboDepth(config.maxComboDepth)
+          clampComboDepth(config.maxComboDepth),
+          hiddenModelsByProvider
         );
 
   orderedTargets = await applyRequestTagRouting(orderedTargets, body, log);
@@ -1132,6 +1147,7 @@ export async function handleComboChat({
         const pipelineRaw = await handlePipelineCombo({
           body,
           combo,
+          availableModels: orderedTargets.map((target) => target.modelStr),
           handleChatCore: handleSingleModelWithTimeout,
           log: {
             info: log.info,
@@ -1281,7 +1297,7 @@ export async function handleComboChat({
     combo,
     config,
     body,
-    resolveShadowTargets(combo, config, allCombos),
+    resolveShadowTargets(combo, config, allCombos, hiddenModelsByProvider),
     handleSingleModel,
     isModelAvailable,
     strategy,
@@ -2466,6 +2482,7 @@ async function handleRoundRobinCombo({
   settings,
   allCombos,
   signal,
+  hiddenModelsByProvider = getHiddenModelsByProvider(),
 }: HandleRoundRobinOptions): Promise<Response> {
   const config = settings
     ? resolveComboConfig(combo, settings)
@@ -2504,7 +2521,8 @@ async function handleRoundRobinCombo({
   const orderedTargets = resolveComboTargets(
     rrExpandedCombo,
     rrExpandedAllCombos,
-    clampComboDepth(config.maxComboDepth)
+    clampComboDepth(config.maxComboDepth),
+    hiddenModelsByProvider
   );
   const tagFilteredTargets = await applyRequestTagRouting(orderedTargets, body, log);
   const evalRankedTargets = orderTargetsByEvalScores(tagFilteredTargets, config.evalRouting, log);
@@ -2530,7 +2548,7 @@ async function handleRoundRobinCombo({
     combo,
     config,
     body,
-    resolveShadowTargets(combo, config, allCombos),
+    resolveShadowTargets(combo, config, allCombos, hiddenModelsByProvider),
     handleSingleModel,
     isModelAvailable,
     "round-robin",
