@@ -22,6 +22,7 @@ export interface CustomModelEntry {
 export type ComboCatalogTarget = {
   modelStr?: string;
   provider?: string | null;
+  providerId?: string | null;
 };
 
 export type ComboTargetCatalogMetadata = {
