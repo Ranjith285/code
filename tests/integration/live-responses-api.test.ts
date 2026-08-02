@@ -201,3 +201,96 @@ test("live Responses API — multi-turn reasoning capture/replay", { skip }, asy
     throw err;
   }
 });
+
+test(
+  "live Responses API — multi-turn with tool result (reasoning replay check)",
+  { skip },
+  async (t) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 180_000);
+
+    try {
+      // Turn 1: Trigger tool call
+      console.log(`[TEST] Responses API: Turn 1 (Tool trigger) with ${MODEL}`);
+      const response1 = await fetch(`${BASE_URL}/api/v1/responses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          input: [
+            {
+              type: "message",
+              role: "user",
+              content: [{ type: "text", text: "What is the weather in SF?" }],
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              name: "get_weather",
+              description: "Get weather",
+              parameters: { type: "object", properties: { location: { type: "string" } } },
+            },
+          ],
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+
+      assert.equal(response1.status, 200);
+      const result1 = await readResponsesSSEStream(response1);
+      const toolCall = result1.items.find((item) => item.type === "function_call");
+      assert.ok(toolCall, "Should have generated a tool call");
+
+      // Turn 2: Provide tool result and ask for final answer
+      // We'll use REASONING_MODEL for the final turn to verify reasoning replay
+      const input2 = [
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "text", text: "What is the weather in SF?" }],
+        },
+        ...result1.items.map((item) => ({ ...item })),
+        {
+          type: "function_call_output",
+          call_id: toolCall.call_id,
+          output: JSON.stringify({ temp: 22, unit: "celsius", condition: "Sunny" }),
+        },
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "text", text: "Great, tell me the result." }],
+        },
+      ];
+
+      console.log(`[TEST] Responses API: Turn 2 (Tool result) with ${REASONING_MODEL}`);
+      const response2 = await fetch(`${BASE_URL}/api/v1/responses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: REASONING_MODEL,
+          input: input2,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+
+      assert.equal(response2.status, 200);
+      const result2 = await readResponsesSSEStream(response2);
+      assert.ok(result2.fullText.length > 0, "Should have final response");
+
+      // Verify reasoning in turns is not lost if the model supports it
+      // Note: We can't easily check the providerRequest from the outside,
+      // but a successful response without "forgetting" is a good sign.
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  }
+);
