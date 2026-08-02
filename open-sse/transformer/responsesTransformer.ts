@@ -283,17 +283,16 @@ export function createResponsesApiTransformStream(
     }
   };
 
-  const emitToolCallAdded = (controller, idx) => {
+  const emitToolCallAdded = (controller, idx, outputIndex) => {
     if (state.funcItemAdded[idx] || !state.funcCallIds[idx]) return false;
 
     const customTool = customToolNames.has(state.funcNames[idx] || "");
     const itemType = customTool ? "custom_tool_call" : "function_call";
     state.funcItemTypes[idx] = itemType;
-    state.funcItemAdded[idx] = true;
 
     emit(controller, "response.output_item.added", {
       type: "response.output_item.added",
-      output_index: idx,
+      output_index: outputIndex,
       item: {
         id: `fc_${state.funcCallIds[idx]}`,
         type: itemType,
@@ -309,10 +308,14 @@ export function createResponsesApiTransformStream(
   const closeToolCall = (controller, idx, recordAsCompleted = true) => {
     const callId = state.funcCallIds[idx];
     if (callId && !state.funcItemDone[idx]) {
-      const normalizedIndex = normalizeOutputIndex(idx);
+      const reasoningOffset = state.reasoningId ? 1 : 0;
+      const msgIdx = reasoningOffset + 0; // Assume choice index 0 for tool calls
+      const messageOffset = state.msgItemAdded[msgIdx] ? 1 : 0;
+      const normalizedIndex = reasoningOffset + messageOffset + normalizeOutputIndex(idx);
+
       let args = state.funcArgsBuf[idx] || "{}";
       const toolName = state.funcNames[idx] || "";
-      emitToolCallAdded(controller, idx);
+      emitToolCallAdded(controller, idx, normalizedIndex);
       const isCustomTool = state.funcItemTypes[idx] === "custom_tool_call";
 
       // Fix #1674 & #1852: Final cleanup of empty string and empty array placeholders.
@@ -647,10 +650,15 @@ export function createResponsesApiTransformStream(
             const msgIdx = state.reasoningId ? state.reasoningIndex + 1 : idx;
             closeMessage(controller, msgIdx);
 
+            const reasoningOffset = state.reasoningId ? 1 : 0;
+            const currentMsgIdx = reasoningOffset + idx;
+            const messageOffset = state.msgItemAdded[currentMsgIdx] ? 1 : 0;
+
             for (const tc of delta.tool_calls) {
               const tcIdx = tc.index ?? 0;
               const newCallId = tc.id;
               const funcName = tc.function?.name;
+              const outputIndex = reasoningOffset + messageOffset + tcIdx;
 
               // T37: Prevent merging if a new tool_call uses the same index
               if (state.funcCallIds[tcIdx] && newCallId && state.funcCallIds[tcIdx] !== newCallId) {
@@ -676,7 +684,7 @@ export function createResponsesApiTransformStream(
               // lifecycle item until the name is available so custom calls are not first
               // announced as function calls.
               if (state.funcCallIds[tcIdx] && state.funcNames[tcIdx]) {
-                const itemAdded = emitToolCallAdded(controller, tcIdx);
+                const itemAdded = emitToolCallAdded(controller, tcIdx, outputIndex);
                 if (
                   itemAdded &&
                   state.funcItemTypes[tcIdx] !== "custom_tool_call" &&
@@ -685,7 +693,7 @@ export function createResponsesApiTransformStream(
                   emit(controller, "response.function_call_arguments.delta", {
                     type: "response.function_call_arguments.delta",
                     item_id: `fc_${state.funcCallIds[tcIdx]}`,
-                    output_index: tcIdx,
+                    output_index: outputIndex,
                     delta: state.funcArgsBuf[tcIdx],
                   });
                 }
@@ -724,7 +732,7 @@ export function createResponsesApiTransformStream(
                   emit(controller, "response.function_call_arguments.delta", {
                     type: "response.function_call_arguments.delta",
                     item_id: `fc_${refCallId}`,
-                    output_index: tcIdx,
+                    output_index: outputIndex,
                     delta: emittedDelta,
                   });
                 }

@@ -255,8 +255,14 @@ export function openaiToOpenAIResponsesResponse(chunk, state) {
     }
     const msgIdx = state.reasoningId ? state.reasoningIndex + 1 : idx;
     closeMessage(state, emit, msgIdx);
+
+    const reasoningOffset = state.reasoningId ? 1 : 0;
+    const messageOffset = state.msgItemAdded[msgIdx] ? 1 : 0;
+
     for (const tc of delta.tool_calls) {
-      emitToolCall(state, emit, tc);
+      const tcIdx = tc.index ?? 0;
+      const outputIndex = reasoningOffset + messageOffset + normalizeOutputIndex(tcIdx);
+      emitToolCall(state, emit, tc, outputIndex);
     }
   }
 
@@ -451,11 +457,8 @@ function closeMessage(state, emit, idx) {
   }
 }
 
-function emitToolCall(state, emit, tc) {
+function emitToolCall(state, emit, tc, outputIndex) {
   const tcIdx = tc.index ?? 0;
-  const outputIndex = state.reasoningId
-    ? normalizeOutputIndex(state.reasoningIndex) + 1 + normalizeOutputIndex(tcIdx)
-    : normalizeOutputIndex(tcIdx);
   const newCallId = tc.id;
   const funcName = tc.function?.name;
 
@@ -536,9 +539,11 @@ function emitToolCall(state, emit, tc) {
 function closeToolCall(state, emit, idx, recordAsCompleted = true) {
   const callId = state.funcCallIds[idx];
   if (callId && !state.funcItemDone[idx]) {
-    const normalizedIndex = state.reasoningId
-      ? normalizeOutputIndex(state.reasoningIndex) + 1 + normalizeOutputIndex(idx)
-      : normalizeOutputIndex(idx);
+    const reasoningOffset = state.reasoningId ? 1 : 0;
+    const msgIdx = reasoningOffset + 0; // Assume choice index 0 for tool calls
+    const messageOffset = state.msgItemAdded[msgIdx] ? 1 : 0;
+    const normalizedIndex = reasoningOffset + messageOffset + normalizeOutputIndex(idx);
+
     const args = state.funcArgsBuf[idx] || "{}";
     const toolName = state.funcNames[idx] || "";
     const isCustomTool =
